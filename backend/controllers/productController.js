@@ -1,8 +1,33 @@
 const Product = require("../models/productModel");
 const ApiFeatures = require("../middleWare/apiFeatures");
+const cloudinary = require("cloudinary");
 
 const createProduct = async (req, res) => {
   try {
+    let images = [];
+
+    if (typeof req.body.images === "string") {
+      images.push(req.body.images);
+    } else {
+      images = req.body.images;
+    }
+
+    const imagesLik = [];
+
+    for (let i = 0; i < images.length; i++) {
+      const result = await cloudinary.v2.uploader.upload(images[i], {
+        folder: "Products",
+      });
+
+      imagesLik.push({
+        public_id: result.public_id,
+        url: result.secure_url,
+      });
+    }
+
+    // now important is that you can change the req.body
+    req.body.images = imagesLik;
+
     req.body.creatorOfProduct = req.user._id;
     const product = await Product.create(req.body);
     res.status(201).json({
@@ -49,11 +74,10 @@ const getAllProducts = async (req, res) => {
   }
 };
 
-//get all products ids without hasitation
+//get all products ids without hasitation //for admin
 const getAllProducts_All = async (req, res) => {
   try {
-    
-    const product = await Product.find()
+    const product = await Product.find();
 
     if (!product) {
       return res.status(404).json({
@@ -61,7 +85,6 @@ const getAllProducts_All = async (req, res) => {
         message: "Products not found",
       });
     }
-
 
     res.status(200).json({
       success: true,
@@ -100,6 +123,37 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    //images updating start here
+
+    let images = [];
+
+    if (typeof req.body.images === "string") {
+      images.push(req.body.images);
+    } else {
+      images = req.body.images;
+    }
+
+    if (images !== undefined) {
+      for (let i = 0; i < product.images.length; i++) {
+        await cloudinary.v2.uploader.destroy(product.images[i].public_id);
+      }
+
+      const imagesLik = [];
+
+      for (let i = 0; i < images.length; i++) {
+        const result = await cloudinary.v2.uploader.upload(images[i], {
+          folder: "Products",
+        });
+
+        imagesLik.push({
+          public_id: result.public_id,
+          url: result.secure_url,
+        });
+      }
+
+      req.body.images = imagesLik;
+    }
+
     await Product.findByIdAndUpdate(req.params.id, req.body);
     res.status(201).json({
       success: true,
@@ -123,7 +177,12 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    await Product.remove();
+    for (let i = 0; i < product.images.length; i++) {
+      await cloudinary.v2.uploader.destroy(product.images[i].public_id);
+    }
+
+    //remove() is deprecated an cause an error so don't use it
+    await Product.deleteOne({ _id: product._id });
     res.status(201).json({
       success: true,
       message: "Product deleted Successfully",

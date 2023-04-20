@@ -10,10 +10,10 @@ const { authentication, authRoles } = require("../Authentication/auth");
 router.route("/create/Review").put(authentication,createProductReview )
 
 //get single product review
-router.route("/productReview").get(authentication,getProductReview )
+router.route("/productReview").get(authRoles("admin"), authentication,getProductReview )
 
 //delete single product review
-router.route("/deleteReview").delete(authentication,deleteReview )
+router.route("/deleteReview").delete(authRoles("admin"), authentication,deleteReview )
 
 
 module.exports = router
