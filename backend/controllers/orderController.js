@@ -132,14 +132,17 @@ const updateOrder = async (req, res) => {
 
     if (req.body.status === "Shipped") {
       order.orderItems.forEach(async (order) => {
-        await stockUpdate(order.product, order.quantity);
+        await stockUpdate(order._id, order.quantity);
       });
-    }
-    if (req.body.status === "Delivered") {
-      order.deliveredAt = Date.now();
+      order.orderStatus = req.body.status;
+
     }
 
-    order.orderStatus = req.body.status;
+    if (req.body.status === "Delivered") {
+      order.deliveredAt = Date.now();
+      order.orderStatus = req.body.status;
+    }
+
     await order.save({ validateBeforeSave: false });
 
     res.status(200).json({
@@ -155,15 +158,10 @@ const updateOrder = async (req, res) => {
 };
 
 async function stockUpdate(productId, quantity) {
-  const product = await Product.findById(productId);
-
+  let product = await Product.findById(productId);
   if (!product) {
-    return res.status(400).json({
-      success: false,
-      message: `product is not found with this Id`,
-    });
+  return  console.log("Product not found");
   }
-
   product.stock -= quantity;
   await product.save({ validateBeforeSave: false });
 }
@@ -180,7 +178,7 @@ const deleteOrder = async (req, res) => {
       });
     }
 
-    await order.remove();
+    await order.deleteOne({_id:req.params.orderId})
 
     res.status(200).json({
       success: true,
